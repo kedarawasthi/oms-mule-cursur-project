@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+          http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <flow name="inventory-sapi-main-flow">
+        <http:listener doc:name="Listen Inventory SAPI Requests" config-ref="inventory-sapi-http-listener-config" path="/api/*">
+            <http:response statusCode="#[vars.inventorySapiHttpStatus default 200]">
+                <http:headers>#[vars.inventorySapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.inventorySapiHttpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.inventorySapiOutboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <logger doc:name="Log Incoming Inventory SAPI Request" level="INFO" category="${app.log.category}" message='#[p("app.name")] received request method=#[attributes.method] path=#[attributes.requestPath] correlationId=#[correlationId]'/>
+        <apikit:router doc:name="Route Request By RAML Resource" config-ref="inventory-sapi-config"/>
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Build 400 Bad Request Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "BAD_REQUEST", message: "Bad request", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="inventorySapiHttpStatus">400</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Build 404 Not Found Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_FOUND", message: "Resource not found", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="inventorySapiHttpStatus">404</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Build 405 Method Not Allowed Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "METHOD_NOT_ALLOWED", message: "Method not allowed", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="inventorySapiHttpStatus">405</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Build 406 Not Acceptable Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_ACCEPTABLE", message: "Not acceptable", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="inventorySapiHttpStatus">406</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Build 415 Unsupported Media Type Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "UNSUPPORTED_MEDIA_TYPE", message: "Unsupported media type", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="inventorySapiHttpStatus">415</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Build 501 Not Implemented Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_IMPLEMENTED", message: "Not Implemented", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="inventorySapiHttpStatus">501</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ANY">
+                <ee:transform doc:name="Build 500 Internal Server Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "INTERNAL_SERVER_ERROR", message: error.description default "Unexpected internal error", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="inventorySapiHttpStatus">500</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <flow name="inventory-sapi-console-flow">
+        <http:listener doc:name="Listen Inventory SAPI Console Requests" config-ref="inventory-sapi-http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.inventorySapiHttpStatus default 200]">
+                <http:headers>#[vars.inventorySapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.inventorySapiHttpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.inventorySapiOutboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console doc:name="Expose API Console" config-ref="inventory-sapi-config"/>
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Build Console 404 Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_FOUND", message: "Resource not found", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="inventorySapiHttpStatus">404</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- POST /inventory/validate - Mock stock validation -->
+    <flow name="inventory-sapi-validate-stock-flow">
+        <logger doc:name="Log Validate Stock Request" level="INFO" category="${app.log.category}" message='Validating inventory for #[sizeOf(payload.items default [])] items correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Mock Inventory Validation Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+var requestedItems = payload.items default []
+var outOfStock = sizeOf(requestedItems filter ((item) -> (item.productId default "") startsWith "PROD-OOS")) > 0
+output application/json
+---
+{
+  valid: not outOfStock,
+  itemsAvailable: not outOfStock,
+  items: requestedItems map ((item) -> {
+    productId: item.productId,
+    quantity: item.quantity,
+    available: not ((item.productId default "") startsWith "PROD-OOS")
+  })
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger doc:name="Log Validate Stock Response" level="INFO" category="${app.log.category}" message='Inventory validation complete allAvailable=#[payload.itemsAvailable] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- GET /health -->
+    <flow name="inventory-sapi-health-flow">
+        <logger doc:name="Log Health Check Request" level="INFO" category="${app.log.category}" message='Health check requested for #[p("app.name")] correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Health Check Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  apiName: p("app.name"),
+  apiVersion: p("app.version"),
+  status: "RUNNING"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>

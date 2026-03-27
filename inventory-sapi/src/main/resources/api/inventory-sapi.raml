@@ -1,0 +1,61 @@
+#%RAML 1.0
+title: Inventory System API
+description: System-layer API for inventory/stock validation.
+version: 1.0.0
+baseUri: https://api.example.com/inventory-sapi/{version}
+protocols: [ HTTPS ]
+mediaType: application/json
+
+uses:
+  inventory-sapi-types: types/inventory-sapi-types.raml
+  inventory-sapi-traits: traits/inventory-sapi-traits.raml
+
+securitySchemes:
+  basic:
+    type: Basic Authentication
+    description: Basic Authentication for internal service-to-service calls.
+
+securedBy: [ basic ]
+
+/health:
+  get:
+    description: Health check endpoint
+    is: [ inventory-sapi-traits.responses-401, inventory-sapi-traits.responses-500 ]
+    responses:
+      200:
+        body:
+          application/json:
+            type: inventory-sapi-types.HealthResponse
+            example:
+              apiName: inventory-sapi
+              apiVersion: 1.0.0
+              status: RUNNING
+
+/inventory/validate:
+  post:
+    description: Validate stock availability for a list of items
+    is: [ inventory-sapi-traits.responses-401, inventory-sapi-traits.responses-500 ]
+    body:
+      application/json:
+        type: inventory-sapi-types.InventoryValidationRequest
+        example:
+          items:
+            - productId: PROD-2001
+              quantity: 2
+            - productId: PROD-2002
+              quantity: 1
+    responses:
+      200:
+        body:
+          application/json:
+            type: inventory-sapi-types.InventoryValidationResponse
+            example:
+              valid: true
+              itemsAvailable: true
+              items:
+                - productId: PROD-2001
+                  quantity: 2
+                  available: true
+                - productId: PROD-2002
+                  quantity: 1
+                  available: true

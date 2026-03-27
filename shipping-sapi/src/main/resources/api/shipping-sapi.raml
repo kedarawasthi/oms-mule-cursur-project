@@ -1,0 +1,96 @@
+#%RAML 1.0
+title: Shipping System API
+description: System-layer API for shipment creation, retrieval, and cancellation.
+version: 1.0.0
+baseUri: https://api.example.com/shipping-sapi/{version}
+protocols: [ HTTPS ]
+mediaType: application/json
+
+uses:
+  shipping-sapi-types: types/shipping-sapi-types.raml
+  shipping-sapi-traits: traits/shipping-sapi-traits.raml
+
+securitySchemes:
+  basic:
+    type: Basic Authentication
+    description: Basic Authentication for internal service-to-service calls.
+
+securedBy: [ basic ]
+
+/health:
+  get:
+    description: Health check endpoint
+    is: [ shipping-sapi-traits.responses-401, shipping-sapi-traits.responses-500 ]
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+              {
+                "apiName": "shipping-sapi",
+                "apiVersion": "v1",
+                "status": "OK"
+              }
+
+/shipments:
+  post:
+    description: Create a new shipment
+    is: [ shipping-sapi-traits.responses-401, shipping-sapi-traits.responses-500 ]
+    body:
+      application/json:
+        example: |
+          {
+            "orderId": "ORD-123",
+            "shippingAddress": {
+              "line1": "123 Main St",
+              "city": "San Francisco",
+              "state": "CA",
+              "postalCode": "94105",
+              "country": "US"
+            }
+          }
+    responses:
+      201:
+        body:
+          application/json:
+            example: |
+              {
+                "shipmentId": "SHP-mock-123",
+                "orderId": "ORD-123",
+                "trackingNumber": "1Z999AA10123456784",
+                "carrier": "UPS",
+                "status": "CREATED",
+                "estimatedDelivery": "2026-03-25"
+              }
+
+  /{shipmentId}:
+    get:
+      description: Get shipment details by shipment ID
+      is: [ shipping-sapi-traits.responses-401, shipping-sapi-traits.responses-500 ]
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                {
+                  "shipmentId": "SHP-mock-123",
+                  "orderId": "ORD-123",
+                  "trackingNumber": "1Z999AA10123456784",
+                  "carrier": "UPS",
+                  "status": "IN_TRANSIT",
+                  "estimatedDelivery": "2026-03-25"
+                }
+    /cancel:
+      post:
+        description: Cancel an existing shipment by shipment ID
+        is: [ shipping-sapi-traits.responses-401, shipping-sapi-traits.responses-500 ]
+        responses:
+          200:
+            body:
+              application/json:
+                example: |
+                  {
+                    "shipmentId": "SHP-mock-123",
+                    "status": "CANCELLED",
+                    "cancelledAt": "2026-03-18T14:45:00Z"
+                  }

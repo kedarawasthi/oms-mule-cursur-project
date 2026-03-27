@@ -1,0 +1,9 @@
+{
+    "name": "payment-sapi",
+    "minMuleVersion": "4.4.0",
+    "javaSpecificationVersions": ["17"],
+    "classLoaderModelLoaderDescriptor": {
+        "attributes": {"exportedResources": []},
+        "id": "mule"
+    }
+}

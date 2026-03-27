@@ -1,0 +1,24 @@
+{
+  "orders": [
+    {
+      "orderId": "ORD-2026-001234",
+      "customerId": "CUST-10001",
+      "orderDate": "2026-03-18T14:30:00Z",
+      "items": [
+        {
+          "productId": "PROD-2001",
+          "quantity": 2,
+          "price": 29.99
+        }
+      ],
+      "totalAmount": 208.98,
+      "paymentStatus": "CAPTURED",
+      "shipmentStatus": "SHIPPED",
+      "orderStatus": "SHIPPED",
+      "trackingNumber": "1Z999AA10123456784"
+    }
+  ],
+  "total": 150,
+  "limit": 20,
+  "offset": 0
+}

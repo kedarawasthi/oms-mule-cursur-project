@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+          http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <flow name="customer-sapi-main-flow">
+        <http:listener doc:name="Listen Customer SAPI Requests" config-ref="customer-sapi-http-listener-config" path="/api/*">
+            <http:response statusCode="#[vars.customerSapiHttpStatus default 200]">
+                <http:headers>#[vars.customerSapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.customerSapiHttpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.customerSapiOutboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <logger doc:name="Log Incoming Customer SAPI Request" level="INFO" category="${app.log.category}" message='#[p("app.name")] received request method=#[attributes.method] path=#[attributes.requestPath] correlationId=#[correlationId]'/>
+        <apikit:router doc:name="Route Request By RAML Resource" config-ref="customer-sapi-config"/>
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Build 400 Bad Request Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "BAD_REQUEST", message: "Bad request", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="customerSapiHttpStatus">400</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Build 404 Not Found Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_FOUND", message: "Resource not found", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="customerSapiHttpStatus">404</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Build 405 Method Not Allowed Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "METHOD_NOT_ALLOWED", message: "Method not allowed", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="customerSapiHttpStatus">405</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Build 406 Not Acceptable Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_ACCEPTABLE", message: "Not acceptable", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="customerSapiHttpStatus">406</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Build 415 Unsupported Media Type Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "UNSUPPORTED_MEDIA_TYPE", message: "Unsupported media type", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="customerSapiHttpStatus">415</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Build 501 Not Implemented Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_IMPLEMENTED", message: "Not Implemented", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="customerSapiHttpStatus">501</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ANY">
+                <ee:transform doc:name="Build 500 Internal Server Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "INTERNAL_SERVER_ERROR", message: error.description default "Unexpected internal error", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="customerSapiHttpStatus">500</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <flow name="customer-sapi-console-flow">
+        <http:listener doc:name="Listen Customer SAPI Console Requests" config-ref="customer-sapi-http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.customerSapiHttpStatus default 200]">
+                <http:headers>#[vars.customerSapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.customerSapiHttpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.customerSapiOutboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console doc:name="Expose API Console" config-ref="customer-sapi-config"/>
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Build Console 404 Error">
+                    <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_FOUND", message: "Resource not found", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload></ee:message>
+                    <ee:variables><ee:set-variable variableName="customerSapiHttpStatus">404</ee:set-variable></ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- GET /customers/{customerId}/validate - Mock customer validation -->
+    <flow name="customer-sapi-validate-flow">
+        <logger doc:name="Log Validate Customer Request" level="INFO" category="${app.log.category}" message='Validating customer customerId=#[attributes.uriParams.customerId] correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Mock Customer Validation Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+var customerId = attributes.uriParams.customerId default ""
+var isInvalidCustomer = customerId startsWith "CUST-INVALID"
+output application/json
+---
+if (isInvalidCustomer)
+{
+  valid: false,
+  customerId: customerId,
+  name: null,
+  email: null,
+  status: "INACTIVE",
+  reason: "CUSTOMER_NOT_FOUND"
+}
+else
+{
+  valid: true,
+  customerId: customerId,
+  name: "John Doe",
+  email: "john.doe@example.com",
+  status: "ACTIVE"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger doc:name="Log Validate Customer Response" level="INFO" category="${app.log.category}" message='Customer validation complete customerId=#[payload.customerId] valid=#[payload.valid] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- GET /customers/{customerId} - Mock customer retrieval -->
+    <flow name="customer-sapi-get-customer-flow">
+        <logger doc:name="Log Get Customer Request" level="INFO" category="${app.log.category}" message='Retrieving customer details customerId=#[attributes.uriParams.customerId] correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Mock Customer Details Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  customerId: attributes.uriParams.customerId,
+  name: "John Doe",
+  email: "john.doe@example.com",
+  phone: "+1-555-0123",
+  status: "ACTIVE"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger doc:name="Log Get Customer Response" level="INFO" category="${app.log.category}" message='Customer details returned customerId=#[payload.customerId] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- GET /health -->
+    <flow name="customer-sapi-health-flow">
+        <logger doc:name="Log Health Check Request" level="INFO" category="${app.log.category}" message='Health check requested for #[p("app.name")] correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Health Check Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  apiName: p("app.name"),
+  apiVersion: p("app.version"),
+  status: "RUNNING"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>

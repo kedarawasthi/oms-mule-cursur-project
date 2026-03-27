@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
+
+    <configuration-properties doc:name="Load Environment Properties" file="config-${mule.env}.properties"/>
+    <configuration-properties doc:name="Load Environment Secure Properties" file="config-secure-${mule.env}.properties"/>
+
+    <http:listener-config name="oms-sapi-http-listener-config" doc:name="HTTP Listener config">
+        <http:listener-connection host="${http.host}" port="${http.port}" />
+    </http:listener-config>
+
+    <apikit:config name="oms-sapi-config"
+                   api="api/oms-sapi.raml"
+                   outboundHeadersMapName="omsSapiOutboundHeaders"
+                   httpStatusVarName="omsSapiHttpStatus">
+        <apikit:flow-mappings>
+            <apikit:flow-mapping resource="/orders" action="post" flow-ref="oms-sapi-create-order-flow" />
+            <apikit:flow-mapping resource="/orders" action="get" flow-ref="oms-sapi-list-orders-flow" />
+            <apikit:flow-mapping resource="/orders/{orderId}" action="get" flow-ref="oms-sapi-get-order-flow" />
+            <apikit:flow-mapping resource="/orders/{orderId}/status" action="patch" flow-ref="oms-sapi-update-status-flow" />
+            <apikit:flow-mapping resource="/health" action="get" flow-ref="oms-sapi-health-flow" />
+        </apikit:flow-mappings>
+    </apikit:config>
+
+</mule>

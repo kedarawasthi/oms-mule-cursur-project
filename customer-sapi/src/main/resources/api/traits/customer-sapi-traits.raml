@@ -1,0 +1,24 @@
+#%RAML 1.0 Library
+usage: Traits for Customer System API (customer-sapi)
+
+uses:
+  customer-sapi-types: ../types/customer-sapi-types.raml
+
+traits:
+  responses-401:
+    responses:
+      401:
+        description: Unauthorized - missing or invalid credentials
+        body:
+          application/json:
+            type: customer-sapi-types.Error
+            example: !include ../examples/error-401.json
+
+  responses-500:
+    responses:
+      500:
+        description: Internal system error
+        body:
+          application/json:
+            type: customer-sapi-types.Error
+            example: !include ../examples/error-500.json

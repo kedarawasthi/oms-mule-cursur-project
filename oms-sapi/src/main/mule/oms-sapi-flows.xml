@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- Main APIkit Router Flow -->
+    <flow name="oms-sapi-main-flow">
+        <http:listener config-ref="oms-sapi-http-listener-config" path="/api/*" doc:name="HTTP Listener" />
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Request received: ' ++ attributes.method ++ ' ' ++ attributes.requestUri]"
+                doc:name="Log Request" />
+        <apikit:router config-ref="oms-sapi-config" doc:name="APIkit Router" />
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Request completed: ' ++ attributes.method ++ ' ' ++ attributes.requestUri]"
+                doc:name="Log Response" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST" doc:name="400 Bad Request">
+                <ee:transform doc:name="Set 400 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "BAD_REQUEST",
+    "message": error.description default "Bad request",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="omsSapiHttpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <logger level="ERROR" category="${app.log.category}"
+                        message="#['[' ++ correlationId ++ '] 400 Bad Request: ' ++ error.description]"
+                        doc:name="Log 400" />
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND" doc:name="404 Not Found">
+                <ee:transform doc:name="Set 404 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "NOT_FOUND",
+    "message": error.description default "Resource not found",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="omsSapiHttpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <logger level="ERROR" category="${app.log.category}"
+                        message="#['[' ++ correlationId ++ '] 404 Not Found: ' ++ error.description]"
+                        doc:name="Log 404" />
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED" doc:name="405 Method Not Allowed">
+                <ee:transform doc:name="Set 405 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "METHOD_NOT_ALLOWED",
+    "message": error.description default "Method not allowed",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="omsSapiHttpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <logger level="ERROR" category="${app.log.category}"
+                        message="#['[' ++ correlationId ++ '] 405 Method Not Allowed: ' ++ error.description]"
+                        doc:name="Log 405" />
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE" doc:name="406 Not Acceptable">
+                <ee:transform doc:name="Set 406 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "NOT_ACCEPTABLE",
+    "message": error.description default "Not acceptable",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="omsSapiHttpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <logger level="ERROR" category="${app.log.category}"
+                        message="#['[' ++ correlationId ++ '] 406 Not Acceptable: ' ++ error.description]"
+                        doc:name="Log 406" />
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE" doc:name="415 Unsupported Media Type">
+                <ee:transform doc:name="Set 415 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "UNSUPPORTED_MEDIA_TYPE",
+    "message": error.description default "Unsupported media type",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="omsSapiHttpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <logger level="ERROR" category="${app.log.category}"
+                        message="#['[' ++ correlationId ++ '] 415 Unsupported Media Type: ' ++ error.description]"
+                        doc:name="Log 415" />
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED" doc:name="501 Not Implemented">
+                <ee:transform doc:name="Set 501 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "NOT_IMPLEMENTED",
+    "message": error.description default "Not implemented",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="omsSapiHttpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <logger level="ERROR" category="${app.log.category}"
+                        message="#['[' ++ correlationId ++ '] 501 Not Implemented: ' ++ error.description]"
+                        doc:name="Log 501" />
+            </on-error-propagate>
+            <on-error-propagate type="ANY" doc:name="500 Internal Server Error">
+                <ee:transform doc:name="Set 500 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "INTERNAL_SERVER_ERROR",
+    "message": error.description default "Unexpected internal error",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="omsSapiHttpStatus">500</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <logger level="ERROR" category="${app.log.category}"
+                        message="#['[' ++ correlationId ++ '] 500 Internal Server Error: ' ++ (error.description default 'Unexpected internal error')]"
+                        doc:name="Log 500" />
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- APIkit Console Flow -->
+    <flow name="oms-sapi-console-flow">
+        <http:listener config-ref="oms-sapi-http-listener-config" path="/console/*" doc:name="HTTP Listener Console" />
+        <apikit:console config-ref="oms-sapi-config" doc:name="APIkit Console" />
+    </flow>
+
+    <!-- Create Order Flow -->
+    <flow name="oms-sapi-create-order-flow">
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Creating order for customerId: ' ++ (payload.customerId default 'unknown')]"
+                doc:name="Log Create Order" />
+        <ee:transform doc:name="Mock Order Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "orderId": "ORD-" ++ uuid(),
+    "customerId": payload.customerId,
+    "orderDate": now() as String {format: "yyyy-MM-dd'T'HH:mm:ss'Z'"},
+    "orderStatus": "CONFIRMED",
+    "items": payload.items,
+    "totalAmount": payload.totalAmount,
+    "paymentStatus": "AUTHORIZED",
+    "shipmentStatus": "PENDING"
+}]]></ee:set-payload>
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="omsSapiHttpStatus">201</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Order created successfully']"
+                doc:name="Log Order Created" />
+    </flow>
+
+    <!-- List Orders Flow -->
+    <flow name="oms-sapi-list-orders-flow">
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Listing orders - limit: ' ++ (attributes.queryParams.limit default '20') ++ ', offset: ' ++ (attributes.queryParams.offset default '0')]"
+                doc:name="Log List Orders" />
+        <ee:transform doc:name="Mock List Orders Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var queryLimit = attributes.queryParams.limit default "20"
+var queryOffset = attributes.queryParams.offset default "0"
+---
+{
+    "orders": [
+        {
+            "orderId": "ORD-mock-001",
+            "customerId": "CUST-10001",
+            "orderDate": "2026-03-19T10:30:00Z",
+            "orderStatus": "CONFIRMED",
+            "totalAmount": 208.98,
+            "paymentStatus": "AUTHORIZED",
+            "shipmentStatus": "PENDING"
+        },
+        {
+            "orderId": "ORD-mock-002",
+            "customerId": "CUST-10002",
+            "orderDate": "2026-03-18T14:15:00Z",
+            "orderStatus": "SHIPPED",
+            "totalAmount": 59.99,
+            "paymentStatus": "CAPTURED",
+            "shipmentStatus": "SHIPPED"
+        }
+    ],
+    "total": 2,
+    "limit": queryLimit as Number,
+    "offset": queryOffset as Number
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Orders listed successfully']"
+                doc:name="Log Orders Listed" />
+    </flow>
+
+    <!-- Get Order Flow -->
+    <flow name="oms-sapi-get-order-flow">
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Retrieving order: ' ++ attributes.uriParams.orderId]"
+                doc:name="Log Get Order" />
+        <ee:transform doc:name="Mock Get Order Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "orderId": attributes.uriParams.orderId,
+    "customerId": "CUST-10001",
+    "orderDate": "2026-03-19T10:30:00Z",
+    "orderStatus": "CONFIRMED",
+    "items": [
+        {
+            "productId": "PROD-001",
+            "productName": "Wireless Mouse",
+            "quantity": 2,
+            "unitPrice": 29.99
+        },
+        {
+            "productId": "PROD-002",
+            "productName": "USB-C Hub",
+            "quantity": 1,
+            "unitPrice": 149.00
+        }
+    ],
+    "totalAmount": 208.98,
+    "paymentStatus": "AUTHORIZED",
+    "shipmentStatus": "PENDING"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Order retrieved successfully']"
+                doc:name="Log Order Retrieved" />
+    </flow>
+
+    <!-- Update Order Status Flow -->
+    <flow name="oms-sapi-update-status-flow">
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Updating status for order: ' ++ attributes.uriParams.orderId]"
+                doc:name="Log Update Status" />
+        <ee:transform doc:name="Mock Update Status Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "orderId": attributes.uriParams.orderId,
+    "customerId": "CUST-10001",
+    "orderDate": "2026-03-19T10:30:00Z",
+    "orderStatus": payload.orderStatus default "CONFIRMED",
+    "items": [
+        {
+            "productId": "PROD-001",
+            "productName": "Wireless Mouse",
+            "quantity": 2,
+            "unitPrice": 29.99
+        },
+        {
+            "productId": "PROD-002",
+            "productName": "USB-C Hub",
+            "quantity": 1,
+            "unitPrice": 149.00
+        }
+    ],
+    "totalAmount": 208.98,
+    "paymentStatus": "AUTHORIZED",
+    "shipmentStatus": payload.shipmentStatus default "PENDING",
+    "trackingNumber": payload.trackingNumber default null
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Order status updated successfully']"
+                doc:name="Log Status Updated" />
+    </flow>
+
+    <!-- Health Check Flow -->
+    <flow name="oms-sapi-health-flow">
+        <logger level="DEBUG" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Health check requested']"
+                doc:name="Log Health Check" />
+        <ee:transform doc:name="Health Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "apiName": "${app.name}",
+    "apiVersion": "${app.version}",
+    "status": "OK"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+
+</mule>

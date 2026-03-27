@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- ======================== MAIN FLOW ======================== -->
+    <flow name="payment-sapi-main-flow">
+        <http:listener doc:name="HTTP /api/*"
+                       config-ref="payment-sapi-http-listener-config"
+                       path="/api/*">
+            <http:response statusCode="#[vars.paymentSapiHttpStatus default 200]">
+                <http:headers>#[vars.paymentSapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.paymentSapiHttpStatus default 500]">
+                <http:headers>#[vars.paymentSapiOutboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+
+        <logger doc:name="Log Request"
+                level="INFO"
+                category="${app.log.category}"
+                message="#['correlationId=' ++ correlationId ++ ' | method=' ++ attributes.method ++ ' | path=' ++ attributes.requestPath]" />
+
+        <apikit:router doc:name="APIkit Router" config-ref="payment-sapi-config" />
+
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST" doc:name="400 Bad Request">
+                <set-variable variableName="paymentSapiHttpStatus" value="#[400]" doc:name="Set 400" />
+                <set-variable variableName="paymentSapiOutboundHeaders" value="#[{'Content-Type': 'application/json'}]" doc:name="Set Headers" />
+                <ee:transform doc:name="Error Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "BAD_REQUEST",
+    "message": error.description default "Bad request",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+
+            <on-error-propagate type="APIKIT:NOT_FOUND" doc:name="404 Not Found">
+                <set-variable variableName="paymentSapiHttpStatus" value="#[404]" doc:name="Set 404" />
+                <set-variable variableName="paymentSapiOutboundHeaders" value="#[{'Content-Type': 'application/json'}]" doc:name="Set Headers" />
+                <ee:transform doc:name="Error Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "NOT_FOUND",
+    "message": error.description default "Resource not found",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED" doc:name="405 Method Not Allowed">
+                <set-variable variableName="paymentSapiHttpStatus" value="#[405]" doc:name="Set 405" />
+                <set-variable variableName="paymentSapiOutboundHeaders" value="#[{'Content-Type': 'application/json'}]" doc:name="Set Headers" />
+                <ee:transform doc:name="Error Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "METHOD_NOT_ALLOWED",
+    "message": error.description default "Method not allowed",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE" doc:name="406 Not Acceptable">
+                <set-variable variableName="paymentSapiHttpStatus" value="#[406]" doc:name="Set 406" />
+                <set-variable variableName="paymentSapiOutboundHeaders" value="#[{'Content-Type': 'application/json'}]" doc:name="Set Headers" />
+                <ee:transform doc:name="Error Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "NOT_ACCEPTABLE",
+    "message": error.description default "Not acceptable",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE" doc:name="415 Unsupported Media Type">
+                <set-variable variableName="paymentSapiHttpStatus" value="#[415]" doc:name="Set 415" />
+                <set-variable variableName="paymentSapiOutboundHeaders" value="#[{'Content-Type': 'application/json'}]" doc:name="Set Headers" />
+                <ee:transform doc:name="Error Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "UNSUPPORTED_MEDIA_TYPE",
+    "message": error.description default "Unsupported media type",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED" doc:name="501 Not Implemented">
+                <set-variable variableName="paymentSapiHttpStatus" value="#[501]" doc:name="Set 501" />
+                <set-variable variableName="paymentSapiOutboundHeaders" value="#[{'Content-Type': 'application/json'}]" doc:name="Set Headers" />
+                <ee:transform doc:name="Error Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "NOT_IMPLEMENTED",
+    "message": error.description default "Not implemented",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ANY" doc:name="500 Internal Server Error">
+                <set-variable variableName="paymentSapiHttpStatus" value="#[500]" doc:name="Set 500" />
+                <set-variable variableName="paymentSapiOutboundHeaders" value="#[{'Content-Type': 'application/json'}]" doc:name="Set Headers" />
+                <ee:transform doc:name="Error Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "INTERNAL_SERVER_ERROR",
+    "message": error.description default "Unexpected internal error",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- ======================== CONSOLE FLOW ======================== -->
+    <flow name="payment-sapi-console-flow">
+        <http:listener doc:name="HTTP /console/*"
+                       config-ref="payment-sapi-http-listener-config"
+                       path="/console/*">
+            <http:response statusCode="#[vars.paymentSapiHttpStatus default 200]">
+                <http:headers>#[vars.paymentSapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+        </http:listener>
+        <apikit:console doc:name="APIkit Console" config-ref="payment-sapi-config" />
+    </flow>
+
+    <!-- ======================== AUTHORIZE FLOW ======================== -->
+    <flow name="payment-sapi-authorize-flow">
+        <logger doc:name="Log Authorize Request"
+                level="INFO"
+                category="${app.log.category}"
+                message="#['correlationId=' ++ correlationId ++ ' | Authorize payment request received']" />
+
+        <ee:transform doc:name="Mock Authorize Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+var requestAmount = (payload.amount default 0) as Number
+var isDeclined = requestAmount > 10000
+output application/json
+---
+if (isDeclined)
+{
+    "authorized": false,
+    "transactionId": null,
+    "amount": requestAmount,
+    "currency": payload.currency default "USD",
+    "status": "DECLINED",
+    "reason": "DECLINED_LIMIT_EXCEEDED"
+}
+else
+{
+    "authorized": true,
+    "transactionId": "txn-mock-" ++ uuid(),
+    "amount": requestAmount,
+    "currency": payload.currency default "USD",
+    "status": "AUTHORIZED"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+
+        <logger doc:name="Log Authorize Response"
+                level="INFO"
+                category="${app.log.category}"
+                message="#['correlationId=' ++ correlationId ++ ' | Authorize payment response: ' ++ write(payload, 'application/json')]" />
+    </flow>
+
+    <!-- ======================== CAPTURE FLOW ======================== -->
+    <flow name="payment-sapi-capture-flow">
+        <logger doc:name="Log Capture Request"
+                level="INFO"
+                category="${app.log.category}"
+                message="#['correlationId=' ++ correlationId ++ ' | Capture payment request for transactionId=' ++ attributes.uriParams.transactionId]" />
+
+        <ee:transform doc:name="Mock Capture Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "transactionId": attributes.uriParams.transactionId,
+    "status": "CAPTURED",
+    "capturedAt": now() as String {format: "yyyy-MM-dd'T'HH:mm:ss'Z'"}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+
+        <logger doc:name="Log Capture Response"
+                level="INFO"
+                category="${app.log.category}"
+                message="#['correlationId=' ++ correlationId ++ ' | Capture payment response: ' ++ write(payload, 'application/json')]" />
+    </flow>
+
+    <!-- ======================== REVERSE FLOW ======================== -->
+    <flow name="payment-sapi-reverse-flow">
+        <logger doc:name="Log Reverse Request"
+                level="INFO"
+                category="${app.log.category}"
+                message="#['correlationId=' ++ correlationId ++ ' | Reverse payment request for transactionId=' ++ attributes.uriParams.transactionId]" />
+
+        <ee:transform doc:name="Mock Reverse Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "transactionId": attributes.uriParams.transactionId,
+    "status": "REVERSED",
+    "reversedAt": now() as String {format: "yyyy-MM-dd'T'HH:mm:ss'Z'"}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+
+        <logger doc:name="Log Reverse Response"
+                level="INFO"
+                category="${app.log.category}"
+                message="#['correlationId=' ++ correlationId ++ ' | Reverse payment response: ' ++ write(payload, 'application/json')]" />
+    </flow>
+
+    <!-- ======================== HEALTH FLOW ======================== -->
+    <flow name="payment-sapi-health-flow">
+        <ee:transform doc:name="Health Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "apiName": "payment-sapi",
+    "apiVersion": "1.0.0",
+    "status": "RUNNING"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+
+</mule>

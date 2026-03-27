@@ -1,0 +1,33 @@
+#%RAML 1.0 Library
+usage: Traits for OMS System API (oms-sapi)
+
+uses:
+  oms-sapi-types: ../types/oms-sapi-types.raml
+
+traits:
+  paginated:
+    queryParameters:
+      limit:
+        type: integer
+        required: false
+        default: 20
+      offset:
+        type: integer
+        required: false
+        default: 0
+
+  responses-401:
+    responses:
+      401:
+        body:
+          application/json:
+            type: oms-sapi-types.Error
+            example: !include ../examples/error-401.json
+
+  responses-500:
+    responses:
+      500:
+        body:
+          application/json:
+            type: oms-sapi-types.Error
+            example: !include ../examples/error-500.json

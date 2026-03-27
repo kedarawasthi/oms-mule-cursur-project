@@ -1,0 +1,84 @@
+#%RAML 1.0
+title: Payment System API
+description: System-layer API for payment authorization and capture.
+version: 1.0.0
+baseUri: https://api.example.com/payment-sapi/{version}
+protocols: [ HTTPS ]
+mediaType: application/json
+
+uses:
+  payment-sapi-types: types/payment-sapi-types.raml
+  payment-sapi-traits: traits/payment-sapi-traits.raml
+
+securitySchemes:
+  basic:
+    type: Basic Authentication
+    description: Basic Authentication for internal service-to-service calls.
+
+securedBy: [ basic ]
+
+/health:
+  get:
+    description: Health check endpoint
+    is: [ payment-sapi-traits.responses-401, payment-sapi-traits.responses-500 ]
+    responses:
+      200:
+        body:
+          application/json:
+            type: payment-sapi-types.HealthResponse
+            example:
+              apiName: payment-sapi
+              apiVersion: 1.0.0
+              status: RUNNING
+
+/payments/authorize:
+  post:
+    description: Authorize a payment
+    is: [ payment-sapi-traits.responses-401, payment-sapi-traits.responses-500 ]
+    body:
+      application/json:
+        type: payment-sapi-types.AuthorizePaymentRequest
+        example:
+          customerId: CUST-10001
+          amount: 208.98
+          paymentMethodId: pm_abc123xyz
+          currency: USD
+    responses:
+      200:
+        body:
+          application/json:
+            type: payment-sapi-types.AuthorizePaymentResponse
+            example:
+              authorized: true
+              transactionId: txn-mock-abc123
+              amount: 208.98
+              currency: USD
+              status: AUTHORIZED
+
+/payments/{transactionId}/capture:
+  post:
+    description: Capture an authorized payment
+    is: [ payment-sapi-traits.responses-401, payment-sapi-traits.responses-500 ]
+    responses:
+      200:
+        body:
+          application/json:
+            type: payment-sapi-types.PaymentTransactionResponse
+            example:
+              transactionId: txn-mock-abc123
+              status: CAPTURED
+              capturedAt: "2026-03-18T14:35:00Z"
+
+/payments/{transactionId}/reverse:
+  post:
+    description: Reverse a previously authorized payment
+    is: [ payment-sapi-traits.responses-401, payment-sapi-traits.responses-500 ]
+    responses:
+      200:
+        body:
+          application/json:
+            type: payment-sapi-types.PaymentTransactionResponse
+            example:
+              transactionId: txn-mock-abc123
+              status: REVERSED
+              reversedAt: "2026-03-18T14:40:00Z"

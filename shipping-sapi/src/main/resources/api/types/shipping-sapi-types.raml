@@ -1,0 +1,11 @@
+#%RAML 1.0 Library
+usage: Data types for Shipping System API (shipping-sapi)
+
+types:
+  Error:
+    type: object
+    properties:
+      code: string
+      message: string
+      correlationId?: string
+      timestamp?: datetime

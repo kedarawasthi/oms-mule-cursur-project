@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+          http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- Main API entry: HTTP listener + APIkit Router (scaffolded from Design Center / RAML) -->
+    <flow name="order-xapi-main-flow">
+        <http:listener doc:name="Listen Order XAPI Requests" config-ref="order-xapi-http-listener-config" path="/api/*">
+            <http:response statusCode="#[vars.orderXapiHttpStatus default 200]">
+                <http:headers>#[vars.orderXapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.orderXapiHttpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.orderXapiOutboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <logger doc:name="Log Incoming Order XAPI Request" level="INFO" category="${app.log.category}" message='#[p("app.name")] received request method=#[attributes.method] path=#[attributes.requestPath] correlationId=#[correlationId]'/>
+        <apikit:router doc:name="Route Request By RAML Resource" config-ref="order-xapi-config"/>
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Build 400 Bad Request Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "BAD_REQUEST", message: "Bad request" }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Build 404 Not Found Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_FOUND", message: "Resource not found" }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Build 405 Method Not Allowed Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "METHOD_NOT_ALLOWED", message: "Method not allowed" }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Build 406 Not Acceptable Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_ACCEPTABLE", message: "Not acceptable" }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Build 415 Unsupported Media Type Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "UNSUPPORTED_MEDIA_TYPE", message: "Unsupported media type" }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Build 501 Not Implemented Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_IMPLEMENTED", message: "Not Implemented" }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="HTTP:CONNECTIVITY, HTTP:TIMEOUT">
+                <ee:transform doc:name="Build 503 Service Unavailable Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "SERVICE_UNAVAILABLE", message: "Process API is temporarily unavailable", correlationId: correlationId }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus">503</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="HTTP:BAD_REQUEST, HTTP:UNAUTHORIZED, HTTP:FORBIDDEN, HTTP:NOT_FOUND, HTTP:INTERNAL_SERVER_ERROR">
+                <ee:transform doc:name="Propagate Process API Error Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+if (error.errorMessage.payload != null) error.errorMessage.payload
+else { code: "DOWNSTREAM_ERROR", message: error.description default "Process API returned an error", correlationId: correlationId }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus"><![CDATA[#[error.errorMessage.attributes.statusCode default 500]]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ANY">
+                <ee:transform doc:name="Fallback Error Propagation">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+if (error.errorMessage.payload != null) error.errorMessage.payload
+else { code: "INTERNAL_SERVER_ERROR", message: error.description default "Unexpected internal error", correlationId: correlationId }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus"><![CDATA[#[error.errorMessage.attributes.statusCode default 500]]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- API Console (optional: for testing from browser) -->
+    <flow name="order-xapi-console-flow">
+        <http:listener doc:name="Listen Order XAPI Console Requests" config-ref="order-xapi-http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.orderXapiHttpStatus default 200]">
+                <http:headers>#[vars.orderXapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.orderXapiHttpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.orderXapiOutboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console doc:name="Expose API Console" config-ref="order-xapi-config"/>
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Build Console 404 Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ message: "Resource not found" }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderXapiHttpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- GET /orders - List orders (delegates to Process API) -->
+    <flow name="order-xapi-get-orders-flow">
+        <logger doc:name="Log List Orders Request Context" level="INFO" category="${app.log.category}" message='Listing orders with limit=#[attributes.queryParams.limit default 20] offset=#[attributes.queryParams.offset default 0] correlationId=#[correlationId]'/>
+        <http:request doc:name="Request List Orders From Process API" config-ref="order-papi-request-config" method="GET" path="/orders">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+            <http:query-params><![CDATA[#[output application/java --- { "limit": attributes.queryParams.limit default "20", "offset": attributes.queryParams.offset default "0" }]]]></http:query-params>
+        </http:request>
+        <logger doc:name="Log List Orders Response Summary" level="INFO" category="${app.log.category}" message='Returning order list response total=#[payload.total default 0] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- GET /orders/{orderId} - Retrieve order (delegates to Process API) -->
+    <flow name="order-xapi-get-order-by-id-flow">
+        <logger doc:name="Log Get Order By Id Request" level="INFO" category="${app.log.category}" message='Retrieving order details for orderId=#[attributes.uriParams.orderId] correlationId=#[correlationId]'/>
+        <http:request doc:name="Request Get Order From Process API" config-ref="order-papi-request-config" method="GET" path="#['/orders/' ++ (attributes.uriParams.orderId as String)]">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+        <logger doc:name="Log Get Order By Id Response" level="INFO" category="${app.log.category}" message='Returning order details for orderId=#[payload.orderId] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- POST /orders - Create order (delegates to Process API) -->
+    <flow name="order-xapi-create-order-flow">
+        <logger doc:name="Log Create Order Request" level="INFO" category="${app.log.category}" message='Creating order for customerId=#[payload.customerId default "UNKNOWN"] itemCount=#[sizeOf(payload.items default [])] correlationId=#[correlationId]'/>
+        <http:request doc:name="Request Create Order From Process API" config-ref="order-papi-request-config" method="POST" path="/orders">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+        <ee:transform doc:name="Set Create Order HTTP Status 201">
+            <ee:variables>
+                <ee:set-variable variableName="orderXapiHttpStatus">201</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger doc:name="Log Create Order Response" level="INFO" category="${app.log.category}" message='Order created orderId=#[payload.orderId] status=#[payload.orderStatus] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- PATCH /orders/{orderId}/status - Update order status (delegates to Process API) -->
+    <flow name="order-xapi-patch-order-status-flow">
+        <logger doc:name="Log Update Order Status Request" level="INFO" category="${app.log.category}" message='Updating order status for orderId=#[attributes.uriParams.orderId] requestedStatus=#[payload.orderStatus default "UNKNOWN"] correlationId=#[correlationId]'/>
+        <http:request doc:name="Request Update Status From Process API" config-ref="order-papi-request-config" method="PATCH" path="#['/orders/' ++ (attributes.uriParams.orderId as String) ++ '/status']">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+        <logger doc:name="Log Update Order Status Response" level="INFO" category="${app.log.category}" message='Order status updated orderId=#[payload.orderId] currentStatus=#[payload.orderStatus] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- GET /health - API health details -->
+    <flow name="order-xapi-health-flow">
+        <logger doc:name="Log Health Check Request" level="INFO" category="${app.log.category}" message='Health check requested for #[p("app.name")] correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Health Check Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  apiName: p("app.name"),
+  apiVersion: p("app.version"),
+  status: "RUNNING"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>

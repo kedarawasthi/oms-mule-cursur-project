@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+          http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <configuration-properties doc:name="Load Environment Properties" file="config-${mule.env}.properties"/>
+    <configuration-properties doc:name="Load Environment Secure Properties" file="config-secure-${mule.env}.properties"/>
+
+    <http:listener-config name="order-papi-http-listener-config" doc:name="Order PAPI HTTP Listener Config">
+        <http:listener-connection host="${http.host}" port="${http.port}"/>
+    </http:listener-config>
+
+    <http:request-config name="customer-sapi-request-config" doc:name="Customer SAPI HTTP Request Config" basePath="${customer.basePath}" responseTimeout="${customer.responseTimeout}">
+        <http:request-connection host="${customer.host}" port="${customer.port}" protocol="${customer.protocol}"/>
+    </http:request-config>
+
+    <http:request-config name="inventory-sapi-request-config" doc:name="Inventory SAPI HTTP Request Config" basePath="${inventory.basePath}" responseTimeout="${inventory.responseTimeout}">
+        <http:request-connection host="${inventory.host}" port="${inventory.port}" protocol="${inventory.protocol}"/>
+    </http:request-config>
+
+    <http:request-config name="payment-sapi-request-config" doc:name="Payment SAPI HTTP Request Config" basePath="${payment.basePath}" responseTimeout="${payment.responseTimeout}">
+        <http:request-connection host="${payment.host}" port="${payment.port}" protocol="${payment.protocol}"/>
+    </http:request-config>
+
+    <http:request-config name="oms-sapi-request-config" doc:name="OMS SAPI HTTP Request Config" basePath="${oms.basePath}" responseTimeout="${oms.responseTimeout}">
+        <http:request-connection host="${oms.host}" port="${oms.port}" protocol="${oms.protocol}"/>
+    </http:request-config>
+
+    <http:request-config name="shipping-sapi-request-config" doc:name="Shipping SAPI HTTP Request Config" basePath="${shipping.basePath}" responseTimeout="${shipping.responseTimeout}">
+        <http:request-connection host="${shipping.host}" port="${shipping.port}" protocol="${shipping.protocol}"/>
+    </http:request-config>
+
+    <apikit:config name="order-papi-config" doc:name="Order PAPI APIkit Config" api="api/order-papi.raml" outboundHeadersMapName="orderPapiOutboundHeaders" httpStatusVarName="orderPapiHttpStatus">
+        <apikit:flow-mappings>
+            <apikit:flow-mapping resource="/orders" action="get" flow-ref="order-papi-get-orders-flow"/>
+            <apikit:flow-mapping resource="/orders/{orderId}" action="get" flow-ref="order-papi-get-order-by-id-flow"/>
+            <apikit:flow-mapping resource="/orders" action="post" flow-ref="order-papi-create-order-flow"/>
+            <apikit:flow-mapping resource="/orders/{orderId}/status" action="patch" flow-ref="order-papi-patch-order-status-flow"/>
+            <apikit:flow-mapping resource="/health" action="get" flow-ref="order-papi-health-flow"/>
+        </apikit:flow-mappings>
+    </apikit:config>
+</mule>

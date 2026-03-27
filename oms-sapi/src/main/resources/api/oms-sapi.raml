@@ -1,0 +1,199 @@
+#%RAML 1.0
+title: OMS System API
+description: System-layer API for order persistence and status management.
+version: 1.0.0
+baseUri: https://api.example.com/oms-sapi/{version}
+protocols: [ HTTPS ]
+mediaType: application/json
+
+uses:
+  oms-sapi-types: types/oms-sapi-types.raml
+  oms-sapi-traits: traits/oms-sapi-traits.raml
+
+securitySchemes:
+  basic:
+    type: Basic Authentication
+    description: Basic Authentication for internal service-to-service calls.
+
+securedBy: [ basic ]
+
+/health:
+  get:
+    description: Health check endpoint
+    is: [ oms-sapi-traits.responses-401, oms-sapi-traits.responses-500 ]
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+              {
+                "apiName": "oms-sapi",
+                "apiVersion": "v1",
+                "status": "OK"
+              }
+
+/orders:
+  post:
+    description: Create a new order in the OMS
+    is: [ oms-sapi-traits.responses-401, oms-sapi-traits.responses-500 ]
+    body:
+      application/json:
+        example: |
+          {
+            "customerId": "CUST-10001",
+            "items": [
+              {
+                "productId": "PROD-001",
+                "productName": "Wireless Mouse",
+                "quantity": 2,
+                "unitPrice": 29.99
+              },
+              {
+                "productId": "PROD-002",
+                "productName": "USB-C Hub",
+                "quantity": 1,
+                "unitPrice": 149.00
+              }
+            ],
+            "totalAmount": 208.98,
+            "paymentStatus": "AUTHORIZED"
+          }
+    responses:
+      201:
+        body:
+          application/json:
+            example: |
+              {
+                "orderId": "ORD-mock-123",
+                "customerId": "CUST-10001",
+                "orderDate": "2026-03-19T10:30:00Z",
+                "orderStatus": "CONFIRMED",
+                "items": [
+                  {
+                    "productId": "PROD-001",
+                    "productName": "Wireless Mouse",
+                    "quantity": 2,
+                    "unitPrice": 29.99
+                  },
+                  {
+                    "productId": "PROD-002",
+                    "productName": "USB-C Hub",
+                    "quantity": 1,
+                    "unitPrice": 149.00
+                  }
+                ],
+                "totalAmount": 208.98,
+                "paymentStatus": "AUTHORIZED",
+                "shipmentStatus": "PENDING"
+              }
+
+  get:
+    description: List orders with pagination
+    is: [ oms-sapi-traits.paginated, oms-sapi-traits.responses-401, oms-sapi-traits.responses-500 ]
+    queryParameters:
+      limit:
+        type: integer
+        required: false
+        default: 20
+        description: Maximum number of orders to return
+      offset:
+        type: integer
+        required: false
+        default: 0
+        description: Number of orders to skip
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+              {
+                "orders": [
+                  {
+                    "orderId": "ORD-001",
+                    "customerId": "CUST-10001",
+                    "orderDate": "2026-03-19T10:30:00Z",
+                    "orderStatus": "CONFIRMED",
+                    "totalAmount": 208.98,
+                    "paymentStatus": "AUTHORIZED",
+                    "shipmentStatus": "PENDING"
+                  }
+                ],
+                "total": 1,
+                "limit": 20,
+                "offset": 0
+              }
+
+  /{orderId}:
+    get:
+      description: Get order details by order ID
+      is: [ oms-sapi-traits.responses-401, oms-sapi-traits.responses-500 ]
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                {
+                  "orderId": "ORD-001",
+                  "customerId": "CUST-10001",
+                  "orderDate": "2026-03-19T10:30:00Z",
+                  "orderStatus": "CONFIRMED",
+                  "items": [
+                    {
+                      "productId": "PROD-001",
+                      "productName": "Wireless Mouse",
+                      "quantity": 2,
+                      "unitPrice": 29.99
+                    },
+                    {
+                      "productId": "PROD-002",
+                      "productName": "USB-C Hub",
+                      "quantity": 1,
+                      "unitPrice": 149.00
+                    }
+                  ],
+                  "totalAmount": 208.98,
+                  "paymentStatus": "AUTHORIZED",
+                  "shipmentStatus": "PENDING"
+                }
+
+    /status:
+      patch:
+        description: Update order status
+        is: [ oms-sapi-traits.responses-401, oms-sapi-traits.responses-500 ]
+        body:
+          application/json:
+            example: |
+              {
+                "orderStatus": "SHIPPED",
+                "shipmentStatus": "SHIPPED",
+                "trackingNumber": "1Z999AA10123456784"
+              }
+        responses:
+          200:
+            body:
+              application/json:
+                example: |
+                  {
+                    "orderId": "ORD-001",
+                    "customerId": "CUST-10001",
+                    "orderDate": "2026-03-19T10:30:00Z",
+                    "orderStatus": "SHIPPED",
+                    "items": [
+                      {
+                        "productId": "PROD-001",
+                        "productName": "Wireless Mouse",
+                        "quantity": 2,
+                        "unitPrice": 29.99
+                      },
+                      {
+                        "productId": "PROD-002",
+                        "productName": "USB-C Hub",
+                        "quantity": 1,
+                        "unitPrice": 149.00
+                      }
+                    ],
+                    "totalAmount": 208.98,
+                    "paymentStatus": "AUTHORIZED",
+                    "shipmentStatus": "SHIPPED",
+                    "trackingNumber": "1Z999AA10123456784"
+                  }

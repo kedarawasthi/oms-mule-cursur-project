@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- Main APIkit Router Flow -->
+    <flow name="shipping-sapi-main-flow">
+        <http:listener config-ref="shipping-sapi-http-listener-config" path="/api/*" doc:name="HTTP Listener" />
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Request received: ' ++ attributes.method ++ ' ' ++ attributes.requestUri]"
+                doc:name="Log Request" />
+        <apikit:router config-ref="shipping-sapi-config" doc:name="APIkit Router" />
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Request completed: ' ++ attributes.method ++ ' ' ++ attributes.requestUri]"
+                doc:name="Log Response" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST" doc:name="400 Bad Request">
+                <ee:transform doc:name="Set 400 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "BAD_REQUEST",
+    "message": error.description default "Bad request",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="shippingSapiHttpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND" doc:name="404 Not Found">
+                <ee:transform doc:name="Set 404 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "NOT_FOUND",
+    "message": error.description default "Resource not found",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="shippingSapiHttpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED" doc:name="405 Method Not Allowed">
+                <ee:transform doc:name="Set 405 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "METHOD_NOT_ALLOWED",
+    "message": error.description default "Method not allowed",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="shippingSapiHttpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE" doc:name="406 Not Acceptable">
+                <ee:transform doc:name="Set 406 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "NOT_ACCEPTABLE",
+    "message": error.description default "Not acceptable",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="shippingSapiHttpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE" doc:name="415 Unsupported Media Type">
+                <ee:transform doc:name="Set 415 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "UNSUPPORTED_MEDIA_TYPE",
+    "message": error.description default "Unsupported media type",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="shippingSapiHttpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED" doc:name="501 Not Implemented">
+                <ee:transform doc:name="Set 501 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "NOT_IMPLEMENTED",
+    "message": error.description default "Not implemented",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="shippingSapiHttpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ANY" doc:name="500 Internal Server Error">
+                <ee:transform doc:name="Set 500 Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "code": "INTERNAL_SERVER_ERROR",
+    "message": error.description default "Unexpected internal error",
+    "correlationId": correlationId,
+    "timestamp": now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="shippingSapiHttpStatus">500</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- APIkit Console Flow -->
+    <flow name="shipping-sapi-console-flow">
+        <http:listener config-ref="shipping-sapi-http-listener-config" path="/console/*" doc:name="HTTP Listener Console" />
+        <apikit:console config-ref="shipping-sapi-config" doc:name="APIkit Console" />
+    </flow>
+
+    <!-- Create Shipment Flow -->
+    <flow name="shipping-sapi-create-shipment-flow">
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Creating shipment for orderId: ' ++ (payload.orderId default 'unknown')]"
+                doc:name="Log Create Shipment" />
+        <ee:transform doc:name="Mock Shipment Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "shipmentId": "SHP-" ++ uuid(),
+    "orderId": payload.orderId,
+    "trackingNumber": "1Z999AA10123456784",
+    "carrier": "UPS",
+    "status": "CREATED",
+    "estimatedDelivery": "2026-03-25"
+}]]></ee:set-payload>
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="shippingSapiHttpStatus">201</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+    </flow>
+
+    <!-- Get Shipment Flow -->
+    <flow name="shipping-sapi-get-shipment-flow">
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Retrieving shipment: ' ++ attributes.uriParams.shipmentId]"
+                doc:name="Log Get Shipment" />
+        <ee:transform doc:name="Mock Get Shipment Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "shipmentId": attributes.uriParams.shipmentId,
+    "orderId": "ORD-123",
+    "trackingNumber": "1Z999AA10123456784",
+    "carrier": "UPS",
+    "status": "IN_TRANSIT",
+    "estimatedDelivery": "2026-03-25"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+
+    <!-- Cancel Shipment Flow -->
+    <flow name="shipping-sapi-cancel-shipment-flow">
+        <logger level="INFO" category="${app.log.category}"
+                message="#['[' ++ correlationId ++ '] Cancelling shipment: ' ++ attributes.uriParams.shipmentId]"
+                doc:name="Log Cancel Shipment" />
+        <ee:transform doc:name="Mock Cancel Shipment Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "shipmentId": attributes.uriParams.shipmentId,
+    "status": "CANCELLED",
+    "cancelledAt": now() as String {format: "yyyy-MM-dd'T'HH:mm:ss'Z'"}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+
+    <!-- Health Check Flow -->
+    <flow name="shipping-sapi-health-flow">
+        <ee:transform doc:name="Health Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "apiName": p("app.name"),
+    "apiVersion": p("app.version"),
+    "status": "RUNNING"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+
+</mule>

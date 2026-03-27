@@ -1,0 +1,37 @@
+#%RAML 1.0 Library
+usage: Data types for Customer System API (customer-sapi)
+
+types:
+  HealthResponse:
+    type: object
+    properties:
+      apiName: string
+      apiVersion: string
+      status: string
+
+  CustomerValidationResponse:
+    type: object
+    properties:
+      valid: boolean
+      customerId: string
+      name: string | nil
+      email: string | nil
+      status: string
+      reason?: string
+
+  Customer:
+    type: object
+    properties:
+      customerId: string
+      name: string
+      email: string
+      phone?: string
+      status: string
+
+  Error:
+    type: object
+    properties:
+      code: string
+      message: string
+      correlationId?: string
+      timestamp?: datetime

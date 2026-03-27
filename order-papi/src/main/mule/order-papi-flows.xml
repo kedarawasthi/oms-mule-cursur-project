@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+          http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- Main API entry: HTTP listener + APIkit Router -->
+    <flow name="order-papi-main-flow">
+        <http:listener doc:name="Listen Order PAPI Requests" config-ref="order-papi-http-listener-config" path="/api/*">
+            <http:response statusCode="#[vars.orderPapiHttpStatus default 200]">
+                <http:headers>#[vars.orderPapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.orderPapiHttpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.orderPapiOutboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <logger doc:name="Log Incoming Order PAPI Request" level="INFO" category="${app.log.category}" message='#[p("app.name")] received request method=#[attributes.method] path=#[attributes.requestPath] correlationId=#[correlationId]'/>
+        <apikit:router doc:name="Route Request By RAML Resource" config-ref="order-papi-config"/>
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Build 400 Bad Request Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "BAD_REQUEST", message: "Bad request", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Build 404 Not Found Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_FOUND", message: "Resource not found", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Build 405 Method Not Allowed Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "METHOD_NOT_ALLOWED", message: "Method not allowed", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Build 406 Not Acceptable Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_ACCEPTABLE", message: "Not acceptable", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Build 415 Unsupported Media Type Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "UNSUPPORTED_MEDIA_TYPE", message: "Unsupported media type", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Build 501 Not Implemented Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "NOT_IMPLEMENTED", message: "Not implemented", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ORDER:CUSTOMER_INVALID">
+                <ee:transform doc:name="Build Customer Invalid Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "CUSTOMER_INVALID", message: "Customer validation failed", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ORDER:INVENTORY_INVALID">
+                <ee:transform doc:name="Build Inventory Invalid Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "INVENTORY_INVALID", message: "Inventory validation failed", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ORDER:PAYMENT_DECLINED">
+                <ee:transform doc:name="Build Payment Declined Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "PAYMENT_DECLINED", message: "Payment authorization failed", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">402</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ORDER:OMS_CREATION_FAILED, ORDER:SHIPPING_CREATION_FAILED">
+                <ee:transform doc:name="Build Orchestration Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "ORCHESTRATION_FAILED", message: error.description default "Order orchestration failed", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">500</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="HTTP:BAD_REQUEST, HTTP:NOT_FOUND, HTTP:METHOD_NOT_ALLOWED, HTTP:UNSUPPORTED_MEDIA_TYPE, HTTP:INTERNAL_SERVER_ERROR, HTTP:BAD_GATEWAY, HTTP:SERVICE_UNAVAILABLE">
+                <ee:transform doc:name="Build Downstream HTTP Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "DOWNSTREAM_HTTP_ERROR", message: error.description default "Downstream HTTP error", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">502</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="HTTP:CONNECTIVITY, HTTP:TIMEOUT">
+                <ee:transform doc:name="Build Downstream Connectivity Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "DOWNSTREAM_CONNECTIVITY_ERROR", message: error.description default "Downstream connectivity error", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">504</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="ANY">
+                <ee:transform doc:name="Build 500 Internal Server Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ code: "INTERNAL_SERVER_ERROR", message: error.description default "Unexpected internal error", correlationId: correlationId, timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">500</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- API Console (optional: for testing from browser) -->
+    <flow name="order-papi-console-flow">
+        <http:listener doc:name="Listen Order PAPI Console Requests" config-ref="order-papi-http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.orderPapiHttpStatus default 200]">
+                <http:headers>#[vars.orderPapiOutboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.orderPapiHttpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.orderPapiOutboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console doc:name="Expose API Console" config-ref="order-papi-config"/>
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Build Console 404 Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ message: "Resource not found" }]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="orderPapiHttpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- GET /orders - List orders (orchestrates OMS) -->
+    <flow name="order-papi-get-orders-flow">
+        <logger doc:name="Log List Orders Orchestration Start" level="INFO" category="${app.log.category}" message='Orchestrating list orders from OMS limit=#[attributes.queryParams.limit default 20] offset=#[attributes.queryParams.offset default 0] correlationId=#[correlationId]'/>
+        <flow-ref doc:name="Call OMS Mock - List Orders" name="sys-oms-list-orders-mock-flow"/>
+        <logger doc:name="Log List Orders Orchestration Complete" level="INFO" category="${app.log.category}" message='List orders orchestration completed total=#[payload.total default 0] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- GET /orders/{orderId} - Retrieve order by ID (orchestrates OMS) -->
+    <flow name="order-papi-get-order-by-id-flow">
+        <logger doc:name="Log Get Order Orchestration Start" level="INFO" category="${app.log.category}" message='Orchestrating get order for orderId=#[attributes.uriParams.orderId] correlationId=#[correlationId]'/>
+        <flow-ref doc:name="Call OMS Mock - Get Order By Id" name="sys-oms-get-order-mock-flow"/>
+        <logger doc:name="Log Get Order Orchestration Complete" level="INFO" category="${app.log.category}" message='Get order orchestration completed orderId=#[payload.orderId] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- POST /orders - Create order (orchestrates: customer, inventory, payment, OMS, shipping) -->
+    <flow name="order-papi-create-order-flow">
+        <logger doc:name="Log Create Order Orchestration Start" level="INFO" category="${app.log.category}" message='Create order orchestration started customerId=#[payload.customerId default "UNKNOWN"] itemCount=#[sizeOf(payload.items default [])] correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Capture Incoming Create Order Request">
+            <ee:variables>
+                <ee:set-variable variableName="createRequest">#[payload]</ee:set-variable>
+                <ee:set-variable variableName="paymentAuthorization">#[null]</ee:set-variable>
+                <ee:set-variable variableName="omsOrder">#[null]</ee:set-variable>
+                <ee:set-variable variableName="shipmentInfo">#[null]</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Call Customer Mock - Validate Customer" name="sys-customer-validate-mock-flow"/>
+        <logger doc:name="Log Customer Validation Result" level="INFO" category="${app.log.category}" message='Customer validation completed valid=#[vars.customerValid default false] correlationId=#[correlationId]'/>
+        <choice doc:name="Validate Customer Result">
+            <when expression="#[not (vars.customerValid default false)]">
+                <raise-error type="ORDER:CUSTOMER_INVALID" description="Customer validation failed"/>
+            </when>
+        </choice>
+        <flow-ref doc:name="Call Inventory Mock - Validate Stock" name="sys-inventory-validate-mock-flow"/>
+        <logger doc:name="Log Inventory Validation Result" level="INFO" category="${app.log.category}" message='Inventory validation completed valid=#[vars.inventoryValid default false] correlationId=#[correlationId]'/>
+        <choice doc:name="Validate Inventory Result">
+            <when expression="#[not (vars.inventoryValid default false)]">
+                <raise-error type="ORDER:INVENTORY_INVALID" description="Inventory validation failed"/>
+            </when>
+        </choice>
+        <flow-ref doc:name="Call Payment Mock - Authorize Payment" name="sys-payment-authorize-mock-flow"/>
+        <logger doc:name="Log Payment Authorization Result" level="INFO" category="${app.log.category}" message='Payment authorization completed authorized=#[vars.paymentAuthorized default false] correlationId=#[correlationId]'/>
+        <choice doc:name="Validate Payment Result">
+            <when expression="#[not (vars.paymentAuthorized default false)]">
+                <raise-error type="ORDER:PAYMENT_DECLINED" description="Payment authorization failed"/>
+            </when>
+        </choice>
+        <try doc:name="Create Order In OMS With Compensation">
+            <flow-ref doc:name="Call OMS Mock - Create Order" name="sys-oms-create-order-mock-flow"/>
+            <ee:transform doc:name="Capture OMS Order Result">
+                <ee:variables>
+                    <ee:set-variable variableName="omsOrder">#[payload]</ee:set-variable>
+                </ee:variables>
+            </ee:transform>
+            <logger doc:name="Log OMS Order Creation Result" level="INFO" category="${app.log.category}" message='OMS order creation completed orderId=#[vars.omsOrder.orderId default "UNKNOWN"] correlationId=#[correlationId]'/>
+            <error-handler>
+                <on-error-propagate type="ANY">
+                    <flow-ref doc:name="Compensate Reverse Payment" name="compensate-reverse-payment-flow"/>
+                    <raise-error type="ORDER:OMS_CREATION_FAILED" description="OMS order creation failed after payment authorization"/>
+                </on-error-propagate>
+            </error-handler>
+        </try>
+        <try doc:name="Create Shipment With Compensation">
+            <flow-ref doc:name="Call Shipping Mock - Create Shipment" name="sys-shipping-create-mock-flow"/>
+            <ee:transform doc:name="Capture Shipment Result">
+                <ee:variables>
+                    <ee:set-variable variableName="shipmentInfo">#[payload]</ee:set-variable>
+                </ee:variables>
+            </ee:transform>
+            <logger doc:name="Log Shipping Creation Result" level="INFO" category="${app.log.category}" message='Shipping creation completed trackingNumber=#[vars.shipmentInfo.trackingNumber default "NOT_ASSIGNED"] correlationId=#[correlationId]'/>
+            <error-handler>
+                <on-error-propagate type="ANY">
+                    <flow-ref doc:name="Compensate Reverse Payment" name="compensate-reverse-payment-flow"/>
+                    <raise-error type="ORDER:SHIPPING_CREATION_FAILED" description="Shipment creation failed after OMS order creation"/>
+                </on-error-propagate>
+            </error-handler>
+        </try>
+        <ee:transform doc:name="Build Consolidated Order Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  orderId: vars.omsOrder.orderId default null,
+  customerId: vars.createRequest.customerId,
+  orderDate: vars.omsOrder.orderDate default now() as String {format: "yyyy-MM-dd'T'HH:mm:ss'Z'"},
+  items: vars.createRequest.items default [],
+  totalAmount: (vars.createRequest.items default []) reduce ((item, acc = 0) -> acc + (((item.price default 0) as Number) * ((item.quantity default 0) as Number))),
+  paymentStatus: if (vars.paymentAuthorized default false) "AUTHORIZED" else "FAILED",
+  shipmentStatus: vars.shipmentInfo.status default "CREATED",
+  orderStatus: vars.omsOrder.orderStatus default "CONFIRMED",
+  trackingNumber: vars.shipmentInfo.trackingNumber default null
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <ee:transform doc:name="Set Create Order HTTP Status">
+            <ee:variables>
+                <ee:set-variable variableName="orderPapiHttpStatus">201</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger doc:name="Log Create Order Orchestration Complete" level="INFO" category="${app.log.category}" message='Create order orchestration completed orderId=#[payload.orderId] status=#[payload.orderStatus] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- PATCH /orders/{orderId}/status - Update order status (orchestrates OMS) -->
+    <flow name="order-papi-patch-order-status-flow">
+        <logger doc:name="Log Update Status Orchestration Start" level="INFO" category="${app.log.category}" message='Update status orchestration started orderId=#[attributes.uriParams.orderId] requestedStatus=#[payload.orderStatus default "UNKNOWN"] correlationId=#[correlationId]'/>
+        <flow-ref doc:name="Call OMS Mock - Update Order Status" name="sys-oms-update-status-mock-flow"/>
+        <logger doc:name="Log Update Status Orchestration Complete" level="INFO" category="${app.log.category}" message='Update status orchestration completed orderId=#[payload.orderId] currentStatus=#[payload.orderStatus] correlationId=#[correlationId]'/>
+    </flow>
+
+    <!-- GET /health - API health details -->
+    <flow name="order-papi-health-flow">
+        <logger doc:name="Log Health Check Request" level="INFO" category="${app.log.category}" message='Health check requested for #[p("app.name")] correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Health Check Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  apiName: p("app.name"),
+  apiVersion: p("app.version"),
+  status: "RUNNING"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+
+    <!-- ========== System API sub-flows (HTTP Request to System APIs) ========== -->
+
+    <sub-flow name="sys-customer-validate-mock-flow">
+        <logger doc:name="Log Customer SAPI Request" level="INFO" category="${app.log.category}" message='Calling Customer SAPI to validate customerId=#[vars.createRequest.customerId] correlationId=#[correlationId]'/>
+        <http:request doc:name="Request Validate Customer From Customer SAPI" config-ref="customer-sapi-request-config" method="GET" path="#['/customers/' ++ (vars.createRequest.customerId as String) ++ '/validate']">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+        <ee:transform doc:name="Extract Customer Validation Result">
+            <ee:variables>
+                <ee:set-variable variableName="customerValid">#[payload.valid default false]</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+    </sub-flow>
+
+    <sub-flow name="sys-inventory-validate-mock-flow">
+        <logger doc:name="Log Inventory SAPI Request" level="INFO" category="${app.log.category}" message='Calling Inventory SAPI to validate stock for #[sizeOf(vars.createRequest.items default [])] items correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Inventory Validation Request Payload">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  items: (vars.createRequest.items default []) map ((item) -> {
+    productId: item.productId,
+    quantity: item.quantity
+  })
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <http:request doc:name="Request Validate Stock From Inventory SAPI" config-ref="inventory-sapi-request-config" method="POST" path="/inventory/validate">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+        <ee:transform doc:name="Extract Inventory Validation Result">
+            <ee:variables>
+                <ee:set-variable variableName="inventoryValid">#[payload.valid default false]</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+    </sub-flow>
+
+    <sub-flow name="sys-payment-authorize-mock-flow">
+        <logger doc:name="Log Payment SAPI Request" level="INFO" category="${app.log.category}" message='Calling Payment SAPI to authorize payment correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Payment Authorization Request Payload">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  customerId: vars.createRequest.customerId,
+  amount: (vars.createRequest.items default []) reduce ((item, acc = 0) -> acc + (((item.price default 0) as Number) * ((item.quantity default 0) as Number))),
+  paymentMethodId: vars.createRequest.paymentMethodId default null,
+  currency: "USD"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <http:request doc:name="Request Authorize Payment From Payment SAPI" config-ref="payment-sapi-request-config" method="POST" path="/payments/authorize">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+        <ee:transform doc:name="Extract Payment Authorization Result">
+            <ee:variables>
+                <ee:set-variable variableName="paymentAuthorized">#[payload.authorized default false]</ee:set-variable>
+                <ee:set-variable variableName="paymentAuthorization">#[payload]</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+    </sub-flow>
+
+    <sub-flow name="sys-oms-list-orders-mock-flow">
+        <logger doc:name="Log OMS SAPI List Orders Request" level="INFO" category="${app.log.category}" message='Calling OMS SAPI to list orders correlationId=#[correlationId]'/>
+        <http:request doc:name="Request List Orders From OMS SAPI" config-ref="oms-sapi-request-config" method="GET" path="/orders">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+            <http:query-params><![CDATA[#[output application/java --- { "limit": attributes.queryParams.limit default "20", "offset": attributes.queryParams.offset default "0" }]]]></http:query-params>
+        </http:request>
+    </sub-flow>
+
+    <sub-flow name="sys-oms-get-order-mock-flow">
+        <logger doc:name="Log OMS SAPI Get Order Request" level="INFO" category="${app.log.category}" message='Calling OMS SAPI to get order orderId=#[attributes.uriParams.orderId] correlationId=#[correlationId]'/>
+        <http:request doc:name="Request Get Order From OMS SAPI" config-ref="oms-sapi-request-config" method="GET" path="#['/orders/' ++ (attributes.uriParams.orderId as String)]">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+    </sub-flow>
+
+    <sub-flow name="sys-oms-create-order-mock-flow">
+        <logger doc:name="Log OMS SAPI Create Order Request" level="INFO" category="${app.log.category}" message='Calling OMS SAPI to create order correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build OMS Create Order Request Payload">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  customerId: vars.createRequest.customerId,
+  items: vars.createRequest.items,
+  totalAmount: (vars.createRequest.items default []) reduce ((item, acc = 0) -> acc + (((item.price default 0) as Number) * ((item.quantity default 0) as Number))),
+  paymentStatus: "AUTHORIZED"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <http:request doc:name="Request Create Order From OMS SAPI" config-ref="oms-sapi-request-config" method="POST" path="/orders">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+    </sub-flow>
+
+    <sub-flow name="sys-oms-update-status-mock-flow">
+        <logger doc:name="Log OMS SAPI Update Status Request" level="INFO" category="${app.log.category}" message='Calling OMS SAPI to update order status orderId=#[attributes.uriParams.orderId] correlationId=#[correlationId]'/>
+        <http:request doc:name="Request Update Status From OMS SAPI" config-ref="oms-sapi-request-config" method="PATCH" path="#['/orders/' ++ (attributes.uriParams.orderId as String) ++ '/status']">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+    </sub-flow>
+
+    <sub-flow name="sys-shipping-create-mock-flow">
+        <logger doc:name="Log Shipping SAPI Request" level="INFO" category="${app.log.category}" message='Calling Shipping SAPI to create shipment correlationId=#[correlationId]'/>
+        <ee:transform doc:name="Build Shipping Create Request Payload">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  orderId: payload.orderId,
+  shippingAddress: vars.createRequest.shippingAddress default {
+    line1: "123 Main Street",
+    city: "San Francisco",
+    state: "CA",
+    postalCode: "94105",
+    country: "US"
+  }
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <http:request doc:name="Request Create Shipment From Shipping SAPI" config-ref="shipping-sapi-request-config" method="POST" path="/shipments">
+            <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+        </http:request>
+    </sub-flow>
+
+    <sub-flow name="compensate-reverse-payment-flow">
+        <choice doc:name="Check Payment Transaction For Compensation">
+            <when expression="#[(vars.paymentAuthorization.transactionId default null) != null]">
+                <logger doc:name="Log Payment Compensation Request" level="INFO" category="${app.log.category}" message='Compensating payment transactionId=#[vars.paymentAuthorization.transactionId] correlationId=#[correlationId]'/>
+                <http:request doc:name="Request Reverse Payment From Payment SAPI" config-ref="payment-sapi-request-config" method="POST" path="#['/payments/' ++ (vars.paymentAuthorization.transactionId as String) ++ '/reverse']">
+                    <http:headers><![CDATA[#[output application/java --- { "Content-Type": "application/json", "X-Correlation-ID": correlationId }]]]></http:headers>
+                </http:request>
+            </when>
+        </choice>
+    </sub-flow>
+</mule>

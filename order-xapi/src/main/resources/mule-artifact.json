@@ -1,0 +1,9 @@
+{
+    "name": "order-xapi",
+    "classLoaderModelLoaderDescriptor": {
+        "attributes": {"exportedResources": []},
+        "id": "mule"
+    },
+    "minMuleVersion": "4.4.0",
+    "javaSpecificationVersions": ["17"]
+}

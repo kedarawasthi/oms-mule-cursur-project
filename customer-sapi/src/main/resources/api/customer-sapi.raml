@@ -1,0 +1,78 @@
+#%RAML 1.0
+title: Customer System API
+description: System-layer API for customer validation and retrieval.
+version: 1.0.0
+baseUri: https://api.example.com/customer-sapi/{version}
+protocols: [ HTTPS ]
+mediaType: application/json
+
+uses:
+  customer-sapi-types: types/customer-sapi-types.raml
+  customer-sapi-traits: traits/customer-sapi-traits.raml
+
+securitySchemes:
+  basic:
+    type: Basic Authentication
+    description: Basic Authentication for internal service-to-service calls.
+
+securedBy: [ basic ]
+
+/health:
+  get:
+    description: Health check endpoint
+    is: [ customer-sapi-traits.responses-401, customer-sapi-traits.responses-500 ]
+    responses:
+      200:
+        body:
+          application/json:
+            type: customer-sapi-types.HealthResponse
+            example:
+              apiName: customer-sapi
+              apiVersion: 1.0.0
+              status: RUNNING
+
+/customers/{customerId}/validate:
+  get:
+    description: Validate if customer exists and is active
+    is: [ customer-sapi-traits.responses-401, customer-sapi-traits.responses-500 ]
+    responses:
+      200:
+        body:
+          application/json:
+            type: customer-sapi-types.CustomerValidationResponse
+            example:
+              valid: true
+              customerId: CUST-10001
+              name: John Doe
+              email: john.doe@example.com
+              status: ACTIVE
+      404:
+        body:
+          application/json:
+            type: customer-sapi-types.Error
+            example:
+              code: NOT_FOUND
+              message: Customer not found
+
+/customers/{customerId}:
+  get:
+    description: Retrieve customer details by ID
+    is: [ customer-sapi-traits.responses-401, customer-sapi-traits.responses-500 ]
+    responses:
+      200:
+        body:
+          application/json:
+            type: customer-sapi-types.Customer
+            example:
+              customerId: CUST-10001
+              name: John Doe
+              email: john.doe@example.com
+              phone: +1-555-0123
+              status: ACTIVE
+      404:
+        body:
+          application/json:
+            type: customer-sapi-types.Error
+            example:
+              code: NOT_FOUND
+              message: Customer not found

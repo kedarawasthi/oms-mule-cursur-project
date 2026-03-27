@@ -1,0 +1,47 @@
+#%RAML 1.0 Library
+usage: Data types for Inventory System API (inventory-sapi)
+
+types:
+  HealthResponse:
+    type: object
+    properties:
+      apiName: string
+      apiVersion: string
+      status: string
+
+  InventoryValidationItemRequest:
+    type: object
+    properties:
+      productId: string
+      quantity: integer
+
+  InventoryValidationRequest:
+    type: object
+    properties:
+      items:
+        type: array
+        items: InventoryValidationItemRequest
+
+  InventoryValidationItemResponse:
+    type: object
+    properties:
+      productId: string
+      quantity: integer
+      available: boolean
+
+  InventoryValidationResponse:
+    type: object
+    properties:
+      valid: boolean
+      itemsAvailable: boolean
+      items:
+        type: array
+        items: InventoryValidationItemResponse
+
+  Error:
+    type: object
+    properties:
+      code: string
+      message: string
+      correlationId?: string
+      timestamp?: datetime

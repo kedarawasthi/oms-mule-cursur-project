@@ -1,0 +1,44 @@
+#%RAML 1.0 Library
+usage: Data types for Payment System API (payment-sapi)
+
+types:
+  HealthResponse:
+    type: object
+    properties:
+      apiName: string
+      apiVersion: string
+      status: string
+
+  AuthorizePaymentRequest:
+    type: object
+    properties:
+      customerId: string
+      amount: number
+      paymentMethodId?: string
+      currency: string
+
+  AuthorizePaymentResponse:
+    type: object
+    properties:
+      authorized: boolean
+      transactionId: string | nil
+      amount: number
+      currency: string
+      status: string
+      reason?: string
+
+  PaymentTransactionResponse:
+    type: object
+    properties:
+      transactionId: string
+      status: string
+      capturedAt?: string
+      reversedAt?: string
+
+  Error:
+    type: object
+    properties:
+      code: string
+      message: string
+      correlationId?: string
+      timestamp?: datetime

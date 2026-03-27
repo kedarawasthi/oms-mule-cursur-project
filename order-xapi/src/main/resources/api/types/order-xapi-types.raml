@@ -1,0 +1,123 @@
+#%RAML 1.0 Library
+# Order Experience API - Data Types
+
+usage: Data types for Order Experience API (order-xapi)
+
+types:
+  CreateOrderRequest:
+    type: object
+    description: Payload to create a new order
+    properties:
+      customerId:
+        type: string
+        required: true
+        description: Customer identifier
+      items:
+        type: array
+        items: OrderItemInput
+        minItems: 1
+        description: At least one order line item
+      paymentMethodId?:
+        type: string
+        description: Payment method reference (e.g. token)
+      shippingAddress?:
+        type: Address
+    example: !include ../examples/create-order-request.json
+
+  OrderItemInput:
+    type: object
+    description: Line item for order creation
+    properties:
+      productId:
+        type: string
+        required: true
+      quantity:
+        type: integer
+        minimum: 1
+        required: true
+      price?:
+        type: number
+        format: double
+        description: Optional; may be validated from catalog
+
+  OrderItem:
+    type: object
+    description: Order line item in response
+    properties:
+      productId: string
+      quantity: integer
+      price: number
+
+  Order:
+    type: object
+    description: Order resource
+    properties:
+      orderId: string
+      customerId: string
+      orderDate:
+        type: datetime
+        format: rfc3339
+      items:
+        type: array
+        items: OrderItem
+      totalAmount: number
+      paymentStatus:
+        type: string
+        enum: [ PENDING, AUTHORIZED, CAPTURED, FAILED ]
+      shipmentStatus:
+        type: string
+        enum: [ PENDING, CREATED, SHIPPED, DELIVERED ]
+      orderStatus:
+        type: string
+        enum: [ CREATED, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED ]
+      trackingNumber?:
+        type: string | nil
+    example: !include ../examples/order-response.json
+
+  OrderList:
+    type: object
+    description: Paginated list of orders
+    properties:
+      orders:
+        type: array
+        items: Order
+      total: integer
+      limit: integer
+      offset: integer
+    example: !include ../examples/order-list-response.json
+
+  UpdateOrderStatusRequest:
+    type: object
+    description: Payload to update order status
+    properties:
+      orderStatus:
+        type: string
+        enum: [ CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED ]
+        required: true
+      shipmentStatus?:
+        type: string
+        enum: [ CREATED, SHIPPED, DELIVERED ]
+      trackingNumber?:
+        type: string | nil
+    example: !include ../examples/update-status-request.json
+
+  Address:
+    type: object
+    description: Shipping or billing address
+    properties:
+      line1?: string
+      line2?: string
+      city?: string
+      state?: string
+      postalCode?: string
+      country?: string
+
+  Error:
+    type: object
+    description: Standard API error response
+    properties:
+      code: string
+      message: string
+      correlationId?: string
+      timestamp?: datetime
+    example: !include ../examples/error-500.json

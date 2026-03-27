@@ -1,0 +1,9 @@
+target/
+.idea/
+.vscode/
+.settings/
+*.log
+*.hprof
+*.tmp
+ch2-logs*/
+docs/MASTER_DOCUMENTATION_latest.docx

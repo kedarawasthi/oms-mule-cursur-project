@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <configuration-properties doc:name="Common Properties" file="config-${mule.env}.properties" />
+    <configuration-properties doc:name="Secure Properties" file="config-secure-${mule.env}.properties" />
+
+    <http:listener-config name="payment-sapi-http-listener-config" doc:name="HTTP Listener Config">
+        <http:listener-connection host="${http.host}" port="${http.port}" />
+    </http:listener-config>
+
+    <apikit:config name="payment-sapi-config"
+                   api="api/payment-sapi.raml"
+                   outboundHeadersMapName="paymentSapiOutboundHeaders"
+                   httpStatusVarName="paymentSapiHttpStatus">
+        <apikit:flow-mappings>
+            <apikit:flow-mapping resource="/payments/authorize" action="post" flow-ref="payment-sapi-authorize-flow" />
+            <apikit:flow-mapping resource="/payments/{transactionId}/capture" action="post" flow-ref="payment-sapi-capture-flow" />
+            <apikit:flow-mapping resource="/payments/{transactionId}/reverse" action="post" flow-ref="payment-sapi-reverse-flow" />
+            <apikit:flow-mapping resource="/health" action="get" flow-ref="payment-sapi-health-flow" />
+        </apikit:flow-mappings>
+    </apikit:config>
+
+</mule>

@@ -1,0 +1,22 @@
+#%RAML 1.0 Library
+usage: Traits for Shipping System API (shipping-sapi)
+
+uses:
+  shipping-sapi-types: ../types/shipping-sapi-types.raml
+
+traits:
+  responses-401:
+    responses:
+      401:
+        body:
+          application/json:
+            type: shipping-sapi-types.Error
+            example: !include ../examples/error-401.json
+
+  responses-500:
+    responses:
+      500:
+        body:
+          application/json:
+            type: shipping-sapi-types.Error
+            example: !include ../examples/error-500.json
