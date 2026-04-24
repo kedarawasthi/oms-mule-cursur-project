@@ -1,0 +1,100 @@
+#%RAML 1.0 Library
+
+# ───────────────────────────────────────────────────────────────────
+#  Common Traits — reusable across all OMS API specifications
+# ───────────────────────────────────────────────────────────────────
+
+usage: |
+  Standardised traits applied via 'is: [...]' on any OMS endpoint:
+    paginated        – Adds limit/offset query parameters for list endpoints
+    responses-400    – Declares 400 Bad Request error response
+    responses-401    – Declares 401 Unauthorized error response
+    responses-404    – Declares 404 Not Found error response
+    responses-500    – Declares 500 Internal Server Error response
+    responses-errors – Composite trait declaring 400, 401, 404, 500 together
+
+uses:
+  commonTypes: ../types/common-types.raml
+
+traits:
+
+  paginated:
+    description: Adds standard pagination query parameters
+    queryParameters:
+      limit:
+        type: integer
+        required: false
+        minimum: 1
+        maximum: 100
+        default: 20
+        description: Maximum number of items to return per page
+      offset:
+        type: integer
+        required: false
+        minimum: 0
+        default: 0
+        description: Number of items to skip (for pagination)
+
+  responses-400:
+    responses:
+      400:
+        description: Bad Request — invalid input, missing required fields, or business validation failed
+        body:
+          application/json:
+            type: commonTypes.Error
+            example: !include ../examples/error-400.json
+
+  responses-401:
+    responses:
+      401:
+        description: Unauthorized — missing or invalid authentication credentials
+        body:
+          application/json:
+            type: commonTypes.Error
+            example: !include ../examples/error-401.json
+
+  responses-404:
+    responses:
+      404:
+        description: Not Found — the requested resource does not exist
+        body:
+          application/json:
+            type: commonTypes.Error
+            example: !include ../examples/error-404.json
+
+  responses-500:
+    responses:
+      500:
+        description: Internal Server Error — an unexpected error occurred during processing
+        body:
+          application/json:
+            type: commonTypes.Error
+            example: !include ../examples/error-500.json
+
+  responses-errors:
+    description: Composite trait that applies 400, 401, 404, and 500 error responses
+    responses:
+      400:
+        description: Bad Request — invalid input or business validation failed
+        body:
+          application/json:
+            type: commonTypes.Error
+            example: !include ../examples/error-400.json
+      401:
+        description: Unauthorized — missing or invalid credentials
+        body:
+          application/json:
+            type: commonTypes.Error
+            example: !include ../examples/error-401.json
+      404:
+        description: Not Found — resource does not exist
+        body:
+          application/json:
+            type: commonTypes.Error
+            example: !include ../examples/error-404.json
+      500:
+        description: Internal Server Error — unexpected processing failure
+        body:
+          application/json:
+            type: commonTypes.Error
+            example: !include ../examples/error-500.json

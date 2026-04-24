@@ -1,0 +1,9 @@
+{
+  "main": "oms-common-library.raml",
+  "name": "oms-common-fragment",
+  "classifier": "raml-fragment",
+  "tags": ["oms", "common", "fragment", "library", "api-led", "mulesoft"],
+  "groupId": "com.example.oms",
+  "assetId": "oms-common-fragment",
+  "version": "1.0.0"
+}

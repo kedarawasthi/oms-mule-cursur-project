@@ -1,0 +1,6 @@
+{
+  "code": "NOT_FOUND",
+  "message": "The requested resource was not found.",
+  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "timestamp": "2026-03-18T14:30:01Z"
+}

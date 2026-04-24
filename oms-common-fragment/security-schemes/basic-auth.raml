@@ -1,0 +1,40 @@
+#%RAML 1.0 Library
+
+# ───────────────────────────────────────────────────────────────────
+#  Security Scheme — Basic Authentication
+#  Reusable across all OMS API specifications
+# ───────────────────────────────────────────────────────────────────
+
+usage: |
+  Import and apply in any OMS API spec:
+    uses:
+      security: exchange_modules/.../security-schemes/basic-auth.raml
+    securitySchemes:
+      basic: security.basic
+    securedBy: [ basic ]
+
+securitySchemes:
+
+  basic:
+    type: Basic Authentication
+    description: |
+      Standard Basic Authentication for OMS APIs.
+      Consumers must send an Authorization header with Base64-encoded
+      username:password credentials.
+      - Experience APIs: Consumer applications authenticate here
+      - Process APIs: Experience layer passes credentials downstream
+      - System APIs: Internal service-to-service authentication
+    describedBy:
+      headers:
+        Authorization:
+          type: string
+          description: "Basic <Base64(username:password)>"
+          example: "Basic dXNlcjpwYXNzd29yZA=="
+      responses:
+        401:
+          description: Authentication failed — missing, malformed, or invalid credentials
+          body:
+            application/json:
+              example:
+                code: "UNAUTHORIZED"
+                message: "Missing or invalid authentication credentials."

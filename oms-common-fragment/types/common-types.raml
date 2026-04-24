@@ -1,0 +1,85 @@
+#%RAML 1.0 Library
+
+# ───────────────────────────────────────────────────────────────────
+#  Common Types — shared across all OMS API specifications
+# ───────────────────────────────────────────────────────────────────
+
+usage: |
+  Standard types reused by every OMS API:
+    Error              – Uniform error response envelope
+    HealthResponse     – /health endpoint response shape
+    Address            – Postal address (shipping, billing)
+
+types:
+
+  Error:
+    type: object
+    description: |
+      Standard API error response used consistently across all OMS APIs.
+      Every error handler in every layer (Experience, Process, System)
+      produces this shape, enabling consumers to parse errors uniformly.
+    properties:
+      code:
+        type: string
+        description: Machine-readable error code (e.g. UNAUTHORIZED, NOT_FOUND, INTERNAL_ERROR)
+      message:
+        type: string
+        description: Human-readable error description
+      correlationId?:
+        type: string
+        description: X-Correlation-ID for end-to-end request tracing
+      timestamp?:
+        type: datetime
+        description: ISO 8601 timestamp of when the error occurred
+    example: !include ../examples/error-500.json
+
+  HealthResponse:
+    type: object
+    description: |
+      Standard health check response returned by every API's GET /health endpoint.
+      Used by CloudHub monitoring, load balancers, and operational heartbeat checks.
+    properties:
+      apiName:
+        type: string
+        description: Identifier of the API (e.g. order-xapi, customer-sapi)
+      apiVersion:
+        type: string
+        description: Semantic version of the API (e.g. 1.0.0)
+      status:
+        type: string
+        enum: [ RUNNING, DEGRADED, DOWN ]
+        description: Current operational status
+    example:
+      apiName: "oms-api"
+      apiVersion: "1.0.0"
+      status: "RUNNING"
+
+  Address:
+    type: object
+    description: |
+      Postal address used for shipping and billing across order and shipping APIs.
+    properties:
+      line1?:
+        type: string
+        description: Street address line 1
+      line2?:
+        type: string
+        description: Street address line 2 (apt, suite, etc.)
+      city?:
+        type: string
+        description: City name
+      state?:
+        type: string
+        description: State or province code
+      postalCode?:
+        type: string
+        description: ZIP or postal code
+      country?:
+        type: string
+        description: ISO 3166-1 alpha-2 country code (e.g. US, GB)
+    example:
+      line1: "123 Main St"
+      city: "San Francisco"
+      state: "CA"
+      postalCode: "94105"
+      country: "US"

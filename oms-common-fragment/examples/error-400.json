@@ -1,0 +1,6 @@
+{
+  "code": "BAD_REQUEST",
+  "message": "Invalid request. Please check the request payload and try again.",
+  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "timestamp": "2026-03-18T14:30:01Z"
+}

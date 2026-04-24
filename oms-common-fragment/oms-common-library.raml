@@ -1,0 +1,29 @@
+#%RAML 1.0 Library
+
+# ───────────────────────────────────────────────────────────────────
+#  OMS Common Fragment Library
+#  Reusable types, traits, examples, and security schemes shared
+#  across all OMS APIs (order-xapi, order-papi, oms-sapi,
+#  customer-sapi, inventory-sapi, payment-sapi, shipping-sapi).
+#
+#  Publish to Anypoint Exchange as a RAML Fragment (Library)
+#  so each API spec can import it via:
+#    uses:
+#      common: exchange_modules/<orgId>/oms-common-fragment/1.0.0/oms-common-library.raml
+# ───────────────────────────────────────────────────────────────────
+
+usage: |
+  Centralised OMS library providing:
+    - Standard error type and error response traits (401, 404, 500)
+    - Health check response type
+    - Pagination trait with limit/offset query parameters
+    - Common address type
+    - Order canonical types (shared between Experience and Process APIs)
+    - Security scheme fragment (Basic Authentication)
+    - Standard error response examples
+
+uses:
+  commonTypes: types/common-types.raml
+  orderTypes: types/order-canonical-types.raml
+  commonTraits: traits/common-traits.raml
+  securitySchemes: security-schemes/basic-auth.raml

@@ -1,0 +1,141 @@
+#%RAML 1.0 Library
+
+# ───────────────────────────────────────────────────────────────────
+#  Order Canonical Types — shared between order-xapi and order-papi
+#  Eliminates the duplicate type definitions that existed in both APIs.
+# ───────────────────────────────────────────────────────────────────
+
+usage: |
+  Canonical order domain types used by Experience and Process APIs:
+    CreateOrderRequest, OrderItemInput, OrderItem, Order,
+    OrderList, UpdateOrderStatusRequest
+
+uses:
+  commonTypes: common-types.raml
+
+types:
+
+  CreateOrderRequest:
+    type: object
+    description: Payload submitted by consumers to create a new order
+    properties:
+      customerId:
+        type: string
+        required: true
+        description: Unique customer identifier (e.g. CUST-10001)
+      items:
+        type: array
+        items: OrderItemInput
+        minItems: 1
+        description: At least one order line item is required
+      paymentMethodId?:
+        type: string
+        description: Payment method token or reference
+      shippingAddress?:
+        type: commonTypes.Address
+
+  OrderItemInput:
+    type: object
+    description: Line item in an order creation request
+    properties:
+      productId:
+        type: string
+        required: true
+        description: Product catalogue identifier
+      quantity:
+        type: integer
+        minimum: 1
+        required: true
+        description: Quantity ordered (must be >= 1)
+      price?:
+        type: number
+        format: double
+        description: Unit price (optional; may be validated from catalogue)
+
+  OrderItem:
+    type: object
+    description: Line item in an order response
+    properties:
+      productId:
+        type: string
+        description: Product catalogue identifier
+      quantity:
+        type: integer
+        description: Quantity ordered
+      price:
+        type: number
+        description: Unit price at time of order
+
+  Order:
+    type: object
+    description: |
+      Complete order resource returned by GET and POST operations.
+      Represents the canonical order model across Experience and Process layers.
+    properties:
+      orderId:
+        type: string
+        description: System-generated unique order identifier
+      customerId:
+        type: string
+        description: Customer who placed the order
+      orderDate:
+        type: datetime
+        format: rfc3339
+        description: ISO 8601 timestamp of order creation
+      items:
+        type: array
+        items: OrderItem
+        description: Line items in the order
+      totalAmount:
+        type: number
+        description: Total order value in base currency
+      paymentStatus:
+        type: string
+        enum: [ PENDING, AUTHORIZED, CAPTURED, FAILED ]
+        description: Current payment lifecycle state
+      shipmentStatus:
+        type: string
+        enum: [ PENDING, CREATED, SHIPPED, DELIVERED ]
+        description: Current shipment lifecycle state
+      orderStatus:
+        type: string
+        enum: [ CREATED, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED ]
+        description: Overall order lifecycle state
+      trackingNumber?:
+        type: string | nil
+        description: Carrier tracking number (populated after shipment creation)
+
+  OrderList:
+    type: object
+    description: Paginated collection of orders
+    properties:
+      orders:
+        type: array
+        items: Order
+        description: Array of order resources
+      total:
+        type: integer
+        description: Total number of orders matching the query
+      limit:
+        type: integer
+        description: Maximum items per page (echoed from request)
+      offset:
+        type: integer
+        description: Number of items skipped (echoed from request)
+
+  UpdateOrderStatusRequest:
+    type: object
+    description: Payload to transition an order through its lifecycle
+    properties:
+      orderStatus:
+        type: string
+        enum: [ CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED ]
+        required: true
+        description: Target order status
+      shipmentStatus?:
+        type: string
+        enum: [ CREATED, SHIPPED, DELIVERED ]
+        description: Optional shipment status update
+      trackingNumber?:
+        type: string | nil
+        description: Carrier tracking number (required when status is SHIPPED)
